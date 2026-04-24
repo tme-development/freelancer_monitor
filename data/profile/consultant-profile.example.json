@@ -1,0 +1,110 @@
+{
+  "_comment": "Template profile. Copy this file to consultant-profile.json and replace with your own data. consultant-profile.json is gitignored so your real profile never leaves your machine.",
+  "name": "Jane Example",
+  "title": "Senior Software Engineer & Cloud Architect",
+  "location": "Berlin, Germany",
+  "nationality": "German",
+  "birth_year": 1985,
+  "summary": "Example summary — replace with a 2–4 sentence pitch covering your experience band, typical roles, industries, and the kinds of outcomes you deliver. This text is consumed verbatim by the matching and application prompts, so be specific but honest.",
+  "languages": [
+    { "language": "German", "level": "C2", "note": "Native speaker" },
+    { "language": "English", "level": "C1", "note": "Business-fluent, international projects" }
+  ],
+  "industries": [
+    "E-Commerce",
+    "FinTech",
+    "SaaS / Developer Tools"
+  ],
+  "domains": [
+    "Backend Engineering",
+    "Cloud-native / Kubernetes",
+    "CI/CD & DevOps",
+    "API Design"
+  ],
+  "service_offerings": [
+    {
+      "title": "Cloud-native Modernization",
+      "description": "Example offering — describe a concrete outcome (timeframe + deliverable) so recruiters can anchor on it. Keep under ~2 sentences."
+    },
+    {
+      "title": "Team Enablement & Platform Engineering",
+      "description": "Another example offering. Focus on the *problem you solve*, not on a list of tools."
+    }
+  ],
+  "focus_areas": [
+    {
+      "title": "Backend architecture for scalable web services",
+      "description": "Designing and implementing service boundaries, API contracts, and data models for systems that must grow 10x without rewrites."
+    },
+    {
+      "title": "Cloud-native delivery on Kubernetes",
+      "description": "CI/CD pipelines, GitOps, observability and cost-aware operations for product teams already on or moving to Kubernetes."
+    }
+  ],
+  "skills": [
+    { "category": "programming_language", "name": "Java", "proficiency_level": 4, "frameworks": ["Spring Boot", "Spring Security"] },
+    { "category": "programming_language", "name": "TypeScript", "proficiency_level": 4, "frameworks": ["Node.js", "NestJS", "React"] },
+    { "category": "programming_language", "name": "Python", "proficiency_level": 3, "frameworks": ["FastAPI"] },
+
+    { "category": "architecture", "name": "REST APIs / OpenAPI", "proficiency_level": 4 },
+    { "category": "architecture", "name": "Domain-Driven Design", "proficiency_level": 3 },
+    { "category": "architecture", "name": "Microservices", "proficiency_level": 4 },
+
+    { "category": "database", "name": "PostgreSQL", "proficiency_level": 4 },
+    { "category": "database", "name": "MySQL", "proficiency_level": 3 },
+    { "category": "database", "name": "Redis", "proficiency_level": 3 },
+
+    { "category": "cloud", "name": "Kubernetes", "proficiency_level": 4 },
+    { "category": "cloud", "name": "AWS (EKS, RDS, S3)", "proficiency_level": 3 },
+    { "category": "cloud", "name": "Docker / Compose", "proficiency_level": 4 },
+    { "category": "cloud", "name": "Terraform", "proficiency_level": 3 },
+
+    { "category": "devops", "name": "GitHub Actions", "proficiency_level": 4 },
+    { "category": "devops", "name": "ArgoCD", "proficiency_level": 3 },
+
+    { "category": "observability", "name": "Prometheus / Grafana", "proficiency_level": 3 },
+    { "category": "observability", "name": "OpenTelemetry", "proficiency_level": 3 },
+
+    { "category": "methodology", "name": "Scrum", "proficiency_level": 4 },
+    { "category": "methodology", "name": "Kanban", "proficiency_level": 3 },
+
+    { "category": "role", "name": "Software Architect", "proficiency_level": 4 },
+    { "category": "role", "name": "Tech Lead", "proficiency_level": 3 }
+  ],
+  "certifications": [
+    { "name": "Certified Kubernetes Administrator (CKA)", "issuer": "CNCF / Linux Foundation", "year": 2022 },
+    { "name": "AWS Solutions Architect – Associate", "issuer": "AWS", "year": 2021 }
+  ],
+  "experiences": [
+    {
+      "project_title": "Example modernization project — replace with a real engagement",
+      "company": "Acme Retail GmbH",
+      "role": "Tech Lead | Backend Engineer",
+      "start_date": "2023-01-01",
+      "end_date": "2024-06-30",
+      "technologies": ["Java", "Spring Boot", "PostgreSQL", "Kubernetes", "AWS EKS"],
+      "domains": ["E-Commerce", "Cloud-native"],
+      "description": "Short, concrete description. Prefer facts (team size, scope, measurable outcome) over adjectives. Two to four sentences max."
+    },
+    {
+      "project_title": "Example platform engagement",
+      "company": "Globex FinServ AG",
+      "role": "Backend Engineer",
+      "start_date": "2021-04-01",
+      "end_date": "2022-12-31",
+      "technologies": ["TypeScript", "NestJS", "PostgreSQL", "Redis", "GitHub Actions"],
+      "domains": ["FinTech", "Payments"],
+      "description": "Replace with a real project entry. The matcher uses `technologies` and `domains` heavily, so keep them accurate and consistent with the skills list above."
+    },
+    {
+      "project_title": "Example earlier role",
+      "company": "Initech Software",
+      "role": "Software Engineer",
+      "start_date": "2018-09-01",
+      "end_date": "2021-03-31",
+      "technologies": ["Java", "Spring Boot", "MySQL", "Docker"],
+      "domains": ["SaaS", "B2B"],
+      "description": "Older entries can be brief; the matcher still picks up the skills and domains from them."
+    }
+  ]
+}

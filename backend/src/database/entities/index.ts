@@ -1,0 +1,11 @@
+export { ConsultantProfile } from './consultant-profile.entity';
+export { ProfileSkill } from './profile-skill.entity';
+export { ProfileExperience } from './profile-experience.entity';
+export { ProfileCertification } from './profile-certification.entity';
+export { Project } from './project.entity';
+export { ProjectRequirement } from './project-requirement.entity';
+export { MatchingResult } from './matching-result.entity';
+export { RequirementMatch } from './requirement-match.entity';
+export { Application } from './application.entity';
+export { ApplicationOutcome } from './application-outcome.entity';
+export { Setting } from './setting.entity';

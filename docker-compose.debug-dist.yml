@@ -1,0 +1,11 @@
+# Optional: bind-mount compiled output so the container runs the same dist/ as your host
+# (avoids source-map line skew vs an image built at a different time).
+# Requires: cd backend && npm run build   before   docker compose up
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.debug-dist.yml up backend
+
+services:
+  backend:
+    volumes:
+      - ./backend/dist:/app/dist:ro

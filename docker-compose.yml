@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    platform: linux/amd64
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ollama list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  ollama-mcp:
+    build:
+      context: ./ollama-mcp
+      dockerfile: Dockerfile
+    ports:
+      - '${OLLAMA_MCP_PORT}:${OLLAMA_MCP_PORT}'
+      - '9231:9231'
+    command: ['node', '--inspect=0.0.0.0:9231', 'dist/index.js']
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST}
+      OLLAMA_PORT: ${OLLAMA_PORT}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      MCP_PORT: ${OLLAMA_MCP_PORT}
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://localhost:${OLLAMA_MCP_PORT:-3100}/health\").then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  playwright-mcp:
+    build:
+      context: ./playwright-mcp
+      dockerfile: Dockerfile
+    ports:
+      - '${PLAYWRIGHT_MCP_PORT}:${PLAYWRIGHT_MCP_PORT}'
+    environment:
+      MCP_PORT: ${PLAYWRIGHT_MCP_PORT}
+    shm_size: '2gb'
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://localhost:${PLAYWRIGHT_MCP_PORT:-3200}/health\").then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - '${BACKEND_PORT}:${BACKEND_PORT}'
+      - '9229:9229'
+    command: ['npm', 'run', 'start:debug']
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_PORT: ${MYSQL_PORT}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      OLLAMA_MCP_URL: http://ollama-mcp:${OLLAMA_MCP_PORT}
+      PLAYWRIGHT_MCP_URL: http://playwright-mcp:${PLAYWRIGHT_MCP_PORT}
+      BACKEND_PORT: ${BACKEND_PORT}
+      NODE_ENV: ${NODE_ENV}
+      FREELANCERMAP_SEARCH_URL: ${FREELANCERMAP_SEARCH_URL}
+      FREELANCERMAP_BASE_URL: ${FREELANCERMAP_BASE_URL}
+      FREELANCERMAP_EMAIL: ${FREELANCERMAP_EMAIL:-}
+      FREELANCERMAP_PASSWORD: ${FREELANCERMAP_PASSWORD:-}
+      FREELANCERMAP_MAX_LIST_PAGES: ${FREELANCERMAP_MAX_LIST_PAGES:-}
+      FREELANCERMAP_MAX_PROJECT_AGE_DAYS: ${FREELANCERMAP_MAX_PROJECT_AGE_DAYS:-2}
+      POLLING_INTERVAL_MINUTES: ${POLLING_INTERVAL_MINUTES}
+      MATCHING_THRESHOLD_APPLICATION: ${MATCHING_THRESHOLD_APPLICATION}
+      MATCHING_THRESHOLD_VERY_HIGH: ${MATCHING_THRESHOLD_VERY_HIGH}
+      WEIGHT_DIRECT: ${WEIGHT_DIRECT}
+      WEIGHT_ALTERNATIVE: ${WEIGHT_ALTERNATIVE}
+      WEIGHT_MUST_HAVE: ${WEIGHT_MUST_HAVE}
+      WEIGHT_NICE_TO_HAVE: ${WEIGHT_NICE_TO_HAVE}
+      ALERT_AUDIO_FILE: ${ALERT_AUDIO_FILE}
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+      - backend_dist:/app/dist
+      - ./data:/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama-mcp:
+        condition: service_healthy
+      playwright-mcp:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - '${FRONTEND_PORT}:3000'
+      - '9230:9230'
+    environment:
+      # Browser-side API/WebSocket endpoint
+      VITE_API_URL: http://localhost:${BACKEND_PORT}
+      # Vite dev-server proxy target inside Docker network
+      VITE_PROXY_TARGET: http://backend:${BACKEND_PORT}
+    command:
+      [
+        'node',
+        '--inspect=0.0.0.0:9230',
+        './node_modules/vite/bin/vite.js',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '3000',
+      ]
+
+volumes:
+  mysql_data:
+  ollama_data:
+  backend_node_modules:
+  backend_dist:

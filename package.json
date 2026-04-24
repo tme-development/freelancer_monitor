@@ -1,0 +1,9 @@
+{
+  "name": "project_manager",
+  "private": true,
+  "scripts": {
+    "backend:rebuild:compose": "npm --prefix ./backend run build && docker compose -f docker-compose.yml up backend --build -d --force-recreate",
+    "frontend:rebuild:compose": "docker compose -f docker-compose.yml up frontend --build -d --force-recreate",
+    "app:rebuild:compose": "npm run backend:rebuild:compose && npm run frontend:rebuild:compose"
+  }
+}
