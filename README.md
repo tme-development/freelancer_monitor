@@ -96,6 +96,7 @@ Treat the MCP layer as a teaching exhibit, not as a production recommendation.
 5. Any projects that got imported but never matched (e.g. because Ollama was
   down) are picked up as a backlog on the next cycle.
 
+
 ## Screenshots
 
 > Drop PNGs into `docs/images/` using the filenames below and they will render
@@ -103,19 +104,19 @@ Treat the MCP layer as a teaching exhibit, not as a production recommendation.
 
 ### Project list — matching-rate badges at a glance
 
-Project list
+![Project list](docs/images/project-list.png)
 
 ### Project detail — per-requirement match breakdown
 
-Project detail
+![Project detail](docs/images/project-detail.png)
 
 ### Generated application — ready to copy into your email client
 
-Application view
+![Application view](docs/images/application-view.png)
 
 ### Settings — thresholds, polling interval, pause switches
 
-Settings
+![Settings](docs/images/settings.png)
 
 ## Setup
 
