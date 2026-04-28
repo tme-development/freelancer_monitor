@@ -95,6 +95,9 @@ async function seed() {
     { key_name: 'alert_audio_file', value_text: '/data/audio/alert.mp3', value_type: 'string' },
     { key_name: 'freelancermap_search_url', value_text: 'https://www.freelancermap.de/projekte?categories%5B0%5D=1&created=1&projectContractTypes%5B0%5D=contracting&remoteInPercent%5B0%5D=100&sort=1&pagenr=1', value_type: 'string' },
     { key_name: 'scraping_paused', value_text: '0', value_type: 'boolean' },
+    { key_name: 'scraping_window_enabled', value_text: '0', value_type: 'boolean' },
+    { key_name: 'scraping_window_start_time', value_text: '08:00', value_type: 'string' },
+    { key_name: 'scraping_window_end_time', value_text: '16:00', value_type: 'string' },
   ];
   for (const d of defaults) {
     const exists = await settingRepo.findOneBy({ key_name: d.key_name });

@@ -12,6 +12,7 @@ import { BackendActivityService } from '../dashboard/backend-activity.service';
 export class SchedulerService implements OnModuleInit {
   private readonly logger = new Logger(SchedulerService.name);
   private static readonly TRUTHY_SETTING_VALUES = new Set(['1', 'true', 'yes']);
+  private static readonly HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private intervalMs = 30 * 60 * 1000;
   private isRunning = false;
@@ -48,14 +49,12 @@ export class SchedulerService implements OnModuleInit {
 
     // Run once on startup after a short delay to let services initialize
     const startupDelayMs = 10_000;
-    this.activity.setNextScrapeRun(new Date(Date.now() + startupDelayMs));
+    void this.refreshNextScrapeRunEstimate(new Date(Date.now() + startupDelayMs));
     setTimeout(() => {
-      this.activity.setNextScrapeRun(new Date(Date.now() + this.intervalMs));
       void this.runPipeline();
     }, startupDelayMs);
 
     this.intervalHandle = setInterval(() => {
-      this.activity.setNextScrapeRun(new Date(Date.now() + this.intervalMs));
       void this.runPipeline();
     }, ms);
   }
@@ -84,6 +83,10 @@ export class SchedulerService implements OnModuleInit {
       if (await this.isScrapingPaused()) {
         this.logger.log(
           'Scraping paused (settings); skipping new project import — backlog matching still runs',
+        );
+      } else if (!(await this.isWithinScrapingWindow(new Date()))) {
+        this.logger.log(
+          'Outside configured scraping time window; skipping new project import — backlog matching still runs',
         );
       } else {
         this.activity.setPhase(
@@ -146,6 +149,7 @@ export class SchedulerService implements OnModuleInit {
       this.activity.setIdle();
       this.isRunning = false;
       this.logger.debug(`Pipeline lock released (isRunning=${this.isRunning})`);
+      await this.refreshNextScrapeRunEstimate();
     }
   }
 
@@ -163,6 +167,78 @@ export class SchedulerService implements OnModuleInit {
   ): Promise<number> {
     const s = await this.settingRepo.findOneBy({ key_name: key });
     return s ? parseFloat(s.value_text) : fallback;
+  }
+
+  /** Next listing-import attempt shown in dashboard; respects window when enabled. */
+  private async refreshNextScrapeRunEstimate(firstScheduledRunAt?: Date) {
+    const baseFrom =
+      firstScheduledRunAt ?? new Date(Date.now() + this.intervalMs);
+    const at =
+      await this.computeNextEligibleListingImportTimeAfter(baseFrom);
+    this.activity.setNextScrapeRun(at);
+  }
+
+  private async computeNextEligibleListingImportTimeAfter(
+    firstCandidateTick: Date,
+  ): Promise<Date> {
+    if (await this.isScrapingPaused()) {
+      return firstCandidateTick;
+    }
+    if (!(await this.isScrapingWindowEnabled())) {
+      return firstCandidateTick;
+    }
+    let t = firstCandidateTick;
+    for (let i = 0; i < 10_000; i++) {
+      if (await this.isWithinScrapingWindow(t)) return t;
+      t = new Date(t.getTime() + this.intervalMs);
+    }
+    return firstCandidateTick;
+  }
+
+  private async isScrapingWindowEnabled(): Promise<boolean> {
+    const s = await this.settingRepo.findOneBy({
+      key_name: 'scraping_window_enabled',
+    });
+    const v = (s?.value_text ?? '').trim().toLowerCase();
+    return SchedulerService.TRUTHY_SETTING_VALUES.has(v);
+  }
+
+  /** Uses server local timezone; `start===end` means whole day when window is enabled. */
+  private async isWithinScrapingWindow(when: Date): Promise<boolean> {
+    if (!(await this.isScrapingWindowEnabled())) return true;
+
+    const startS = await this.getSettingString(
+      'scraping_window_start_time',
+      '08:00',
+    );
+    const endS = await this.getSettingString(
+      'scraping_window_end_time',
+      '16:00',
+    );
+    const start = SchedulerService.parseHHmmMinutes(startS);
+    const end = SchedulerService.parseHHmmMinutes(endS);
+    if (start === null || end === null) return true;
+
+    const minuteOfDay = when.getHours() * 60 + when.getMinutes();
+    return SchedulerService.isMinuteWithinWindow(minuteOfDay, start, end);
+  }
+
+  private static parseHHmmMinutes(raw: string): number | null {
+    const m = SchedulerService.HHMM.exec((raw ?? '').trim());
+    if (!m) return null;
+    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  }
+
+  private static isMinuteWithinWindow(
+    minuteOfDay: number,
+    start: number,
+    end: number,
+  ): boolean {
+    if (start === end) return true;
+    if (start < end) {
+      return minuteOfDay >= start && minuteOfDay < end;
+    }
+    return minuteOfDay >= start || minuteOfDay < end;
   }
 
   /** When true, list scraping is skipped so no new projects are imported. */

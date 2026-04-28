@@ -26,6 +26,45 @@
             />
           </div>
         </div>
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-3">
+            <label class="inline-flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                :checked="scrapingWindowEnabled"
+                class="rounded border-gray-300"
+                @change="setScrapingWindowEnabled(($event.target as HTMLInputElement).checked)"
+              />
+              <span class="text-gray-800 font-medium">Limit listing import to a daily time window</span>
+            </label>
+            <p class="text-xs text-gray-500 mt-2 max-w-2xl">
+              When enabled, new listings are only fetched between the start and end times (server clock).
+              Outside that range the scheduler still runs; backlog matching and applications continue.
+              If start and end are equal, the window is treated as all day (24 hours).
+              Overnight windows are supported (e.g. 22:00–06:00).
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Window start</label>
+            <input
+              :value="store.getSetting('scraping_window_start_time')"
+              type="time"
+              :disabled="!scrapingWindowEnabled"
+              class="w-full border rounded px-3 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              @change="update('scraping_window_start_time', ($event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Window end</label>
+            <input
+              :value="store.getSetting('scraping_window_end_time')"
+              type="time"
+              :disabled="!scrapingWindowEnabled"
+              class="w-full border rounded px-3 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              @change="update('scraping_window_end_time', ($event.target as HTMLInputElement).value)"
+            />
+          </div>
+        </div>
         <div class="mt-4 pt-4 border-t border-gray-100">
           <p class="text-xs text-gray-500 mb-3 max-w-xl">
             Pause stops the scraper from fetching listings and importing new projects. The timer still
@@ -261,6 +300,15 @@ const scrapingPaused = computed(() => {
   return v === '1' || v === 'true' || v === 'yes';
 });
 
+const scrapingWindowEnabled = computed(() => {
+  const v =
+    store.settings.find((s) => s.key_name === 'scraping_window_enabled')
+      ?.value_text
+      ?.trim()
+      .toLowerCase() ?? '';
+  return v === '1' || v === 'true' || v === 'yes';
+});
+
 const matchingPaused = computed(() => {
   const v =
     store.settings.find((s) => s.key_name === 'matching_paused')?.value_text
@@ -275,6 +323,13 @@ function update(key: string, value: string) {
 
 async function setScrapingPaused(paused: boolean) {
   await store.updateSetting('scraping_paused', paused ? '1' : '0');
+}
+
+async function setScrapingWindowEnabled(enabled: boolean) {
+  await store.updateSetting(
+    'scraping_window_enabled',
+    enabled ? '1' : '0',
+  );
 }
 
 async function setMatchingPaused(paused: boolean) {

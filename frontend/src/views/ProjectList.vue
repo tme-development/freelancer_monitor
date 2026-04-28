@@ -108,10 +108,10 @@
         ]"
       >
         <div class="flex items-start justify-between">
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 flex flex-col">
             <button
               type="button"
-              class="mb-2 text-xs px-2 py-0.5 rounded border"
+              class="mb-2 self-start text-xs px-2 py-0.5 rounded border"
               :class="
                 isSelected(p.id)
                   ? 'bg-slate-700 text-white border-slate-700'
@@ -148,6 +148,19 @@
               <span v-if="p.remote_percent">{{ p.remote_percent }}% Remote</span>
               <span v-if="p.duration_months">{{ p.duration_months }}m</span>
               <span v-if="p.start_text">Start: {{ p.start_text }}</span>
+            </div>
+            <div class="mt-2 flex justify-end">
+              <a
+                v-if="p.project_url"
+                :href="p.project_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                title="Open original listing on freelancermap.de"
+                @click.stop
+              >
+                Open on Freelancermap →
+              </a>
             </div>
           </div>
           <div class="flex items-center gap-3 ml-4">

@@ -31,6 +31,7 @@ import { DashboardGateway } from './dashboard.gateway';
 
 @Controller('api')
 export class DashboardController {
+  private static readonly HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
   constructor(
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
@@ -207,17 +208,43 @@ export class DashboardController {
     @Param('key') key: string,
     @Body() body: { value: string },
   ) {
+    const value =
+      typeof body?.value === 'string' ? body.value : `${body?.value ?? ''}`;
+    this.validateSettingValue(key, value);
+
     let setting = await this.settingRepo.findOneBy({ key_name: key });
     if (setting) {
-      setting.value_text = body.value;
+      setting.value_text = value;
       return this.settingRepo.save(setting);
     }
     setting = this.settingRepo.create({
       key_name: key,
-      value_text: body.value,
+      value_text: value,
       value_type: 'string',
     });
     return this.settingRepo.save(setting);
+  }
+
+  private validateSettingValue(key: string, value: string): void {
+    if (key === 'scraping_window_enabled') {
+      const v = value.trim().toLowerCase();
+      if (!['0', '1', 'true', 'false', 'yes', 'no'].includes(v)) {
+        throw new BadRequestException(
+          'scraping_window_enabled must be 0/1, true/false, or yes/no',
+        );
+      }
+      return;
+    }
+    if (
+      key === 'scraping_window_start_time' ||
+      key === 'scraping_window_end_time'
+    ) {
+      if (!DashboardController.HHMM.test(value.trim())) {
+        throw new BadRequestException(
+          'scraping_window times must be HH:mm in 24-hour format',
+        );
+      }
+    }
   }
 
   @Post('projects/:id/outcome')
