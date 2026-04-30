@@ -180,9 +180,25 @@ export const useProjectsStore = defineStore('projects', () => {
     return res.json();
   }
 
-  async function createApplication(projectId: number) {
+  async function createApplication(projectId: number, force = false) {
     const res = await fetch(`${API}/api/projects/${projectId}/application`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force }),
+    });
+    return res.json();
+  }
+
+  async function saveManualApplication(
+    projectId: number,
+    payload: {
+      full_application_text?: string | null;
+    },
+  ) {
+    const res = await fetch(`${API}/api/projects/${projectId}/application/manual`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
     return res.json();
   }
@@ -254,6 +270,7 @@ export const useProjectsStore = defineStore('projects', () => {
     deleteOutcome,
     reanalyzeProject,
     createApplication,
+    saveManualApplication,
     deleteProject,
     upsertProjects,
     patchProject,

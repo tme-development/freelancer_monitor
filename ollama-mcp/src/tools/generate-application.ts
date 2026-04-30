@@ -6,8 +6,6 @@ import {
 import { queryOllamaJson } from './ollama-client';
 
 export interface ApplicationText {
-  motivation_paragraph: string | null;
-  application_body: string;
   full_application_text: string;
 }
 
@@ -48,8 +46,8 @@ export async function generateApplication(
   language: string,
 ): Promise<ApplicationText> {
   const recipientHint = isEndcustomer
-    ? 'Empfänger-Typ: Direkter Kunde — Motivationsschreiben (kurz) erlaubt; setze motivation_paragraph.'
-    : 'Empfänger-Typ: Projektvermittler — kein Motivationsschreiben; motivation_paragraph muss null sein.';
+    ? 'Empfänger-Typ: Direkter Kunde — vollständigen Bewerbungstext mit kurzer Motivation erstellen.'
+    : 'Empfänger-Typ: Projektvermittler — vollständigen, listenfokussierten Bewerbungstext ohne separate Motivations-Sektion erstellen.';
   const { systemPrompt, placeholderSubstituted } =
     buildGenerateApplicationSystemPrompt(profileJson);
 
@@ -64,10 +62,6 @@ export async function generateApplication(
   );
 
   return {
-    motivation_paragraph: isEndcustomer
-      ? result.motivation_paragraph || null
-      : null,
-    application_body: result.application_body || '',
     full_application_text: result.full_application_text || '',
   };
 }

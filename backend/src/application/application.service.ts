@@ -102,8 +102,6 @@ export class ApplicationService {
 
     if (existing) {
       existing.matching_result_id = matchingResult.id;
-      existing.motivation_paragraph = appText.motivation_paragraph;
-      existing.application_body = appText.application_body;
       existing.full_application_text = appText.full_application_text;
       existing.application_channel = project.application_channel;
       existing.application_instructions = project.application_instructions;
@@ -114,8 +112,6 @@ export class ApplicationService {
     const application = this.appRepo.create({
       project_id: project.id,
       matching_result_id: matchingResult.id,
-      motivation_paragraph: appText.motivation_paragraph,
-      application_body: appText.application_body,
       full_application_text: appText.full_application_text,
       application_channel: project.application_channel,
       application_instructions: project.application_instructions,

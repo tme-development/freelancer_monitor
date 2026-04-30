@@ -1,14 +1,10 @@
 <template>
   <div v-if="application" class="space-y-4">
     <div
-      v-if="!application.full_application_text && !application.motivation_paragraph"
+      v-if="!application.full_application_text"
       class="bg-gray-50 border rounded-lg p-4 text-sm text-gray-500"
     >
       No application text generated yet. Outcome tracking is available for this project.
-    </div>
-    <div v-if="application.motivation_paragraph" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-      <h4 class="text-sm font-semibold text-blue-800 mb-2">Motivation</h4>
-      <p class="text-sm text-blue-900 whitespace-pre-wrap">{{ application.motivation_paragraph }}</p>
     </div>
 
     <div v-if="application.full_application_text" class="bg-white border rounded-lg p-4">
@@ -35,8 +31,6 @@
 <script setup lang="ts">
 defineProps<{
   application: {
-    motivation_paragraph: string | null;
-    application_body: string;
     full_application_text: string;
     application_channel: string;
     application_instructions: string;

@@ -23,12 +23,6 @@ export class Application {
   @Column()
   matching_result_id: number;
 
-  @Column({ type: 'text', nullable: true })
-  motivation_paragraph: string;
-
-  @Column({ type: 'longtext', nullable: true })
-  application_body: string;
-
   @Column({ type: 'longtext', nullable: true })
   full_application_text: string;
 

@@ -139,8 +139,49 @@
     </div>
 
     <!-- Application -->
-    <div v-if="activeTab === 'Application'">
-      <ApplicationView :application="project.application" />
+    <div v-if="activeTab === 'Application'" class="bg-white border rounded-lg p-6 space-y-4">
+      <p v-if="applicationError" class="text-sm text-red-600">{{ applicationError }}</p>
+      <div class="grid gap-3">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Full application text</label>
+          <textarea
+            v-model="applicationForm.full_application_text"
+            :maxlength="LONGTEXT_MAX"
+            rows="10"
+            class="w-full text-sm border rounded px-2 py-1"
+            placeholder="Write full application text..."
+          />
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="text-sm bg-blue-500 text-white px-3 py-1 rounded disabled:opacity-50"
+          :disabled="savingApplication"
+          @click="saveApplication"
+        >
+          {{ savingApplication ? 'Saving...' : 'Save application text' }}
+        </button>
+        <span v-if="applicationSavedAt" class="text-xs text-emerald-700">
+          Saved {{ new Date(applicationSavedAt).toLocaleTimeString() }}
+        </span>
+      </div>
+      <div class="flex gap-4 text-xs text-gray-500">
+        <span v-if="project.application?.application_channel"
+          >Channel: <strong>{{ project.application.application_channel }}</strong></span
+        >
+        <span v-if="project.application?.detected_language"
+          >Language: <strong>{{ project.application.detected_language }}</strong></span
+        >
+      </div>
+      <div
+        v-if="project.application?.application_instructions"
+        class="bg-gray-50 border rounded p-3"
+      >
+        <p class="text-xs text-gray-600">
+          <strong>How to apply:</strong> {{ project.application.application_instructions }}
+        </p>
+      </div>
     </div>
 
     <!-- Description -->
@@ -236,7 +277,6 @@ import { clearProjectAlert } from '../realtime';
 import { formatProjectPublishDate } from '../utils/projectPublishDate';
 import MatchingBadge from '../components/MatchingBadge.vue';
 import RequirementMatch from '../components/RequirementMatch.vue';
-import ApplicationView from '../components/ApplicationView.vue';
 
 const props = defineProps<{ id: string }>();
 const store = useProjectsStore();
@@ -247,9 +287,16 @@ const newStatus = ref('');
 const newNotes = ref('');
 const reanalyzing = ref(false);
 const creatingApplication = ref(false);
+const savingApplication = ref(false);
 const deleting = ref(false);
 const deletingOutcomeId = ref<number | null>(null);
 const outcomeError = ref('');
+const applicationError = ref('');
+const applicationSavedAt = ref<number | null>(null);
+const LONGTEXT_MAX = 4_294_967_295;
+const applicationForm = ref({
+  full_application_text: '',
+});
 
 const tabs = ['Matching', 'Application', 'Description', 'Metadata', 'Outcome'];
 const statuses = [
@@ -343,11 +390,27 @@ async function reanalyzeProject() {
 
 async function createApplication() {
   if (creatingApplication.value) return;
+  applicationError.value = '';
+  const hasExisting = !!project.value?.application;
+  if (hasExisting) {
+    const ok = window.confirm(
+      'An application already exists. Do you want to overwrite it?',
+    );
+    if (!ok) return;
+  }
   creatingApplication.value = true;
   try {
     const projectId = parseInt(props.id);
-    const result = await store.createApplication(projectId);
+    const result = await store.createApplication(projectId, hasExisting);
+    if (result?.requires_confirmation) {
+      return;
+    }
+    if (result?.error) {
+      applicationError.value = result.error;
+      return;
+    }
     project.value = await store.fetchProject(projectId);
+    syncApplicationFormFromProject();
     if (!result?.error) {
       const patch: Partial<ProjectSummary> = { has_application: true };
       if (typeof result?.matching_rate === 'number') {
@@ -357,6 +420,35 @@ async function createApplication() {
     }
   } finally {
     creatingApplication.value = false;
+  }
+}
+
+function syncApplicationFormFromProject() {
+  applicationForm.value = {
+    full_application_text: project.value?.application?.full_application_text ?? '',
+  };
+}
+
+async function saveApplication() {
+  if (savingApplication.value) return;
+  applicationError.value = '';
+  const projectId = parseInt(props.id);
+  savingApplication.value = true;
+  try {
+    const payload = {
+      full_application_text: applicationForm.value.full_application_text,
+    };
+    const result = await store.saveManualApplication(projectId, payload);
+    if (result?.error) {
+      applicationError.value = result.error;
+      return;
+    }
+    project.value = await store.fetchProject(projectId);
+    syncApplicationFormFromProject();
+    store.patchProject(projectId, { has_application: true });
+    applicationSavedAt.value = Date.now();
+  } finally {
+    savingApplication.value = false;
   }
 }
 
@@ -379,5 +471,6 @@ onMounted(async () => {
   const projectId = parseInt(props.id);
   clearProjectAlert(projectId);
   project.value = await store.fetchProject(projectId);
+  syncApplicationFormFromProject();
 });
 </script>

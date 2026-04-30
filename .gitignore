@@ -41,6 +41,9 @@ TEST*.xml
 # env files
 .env
 
+# Playwright MCP
+.playwright-mcp/
+
 # Personal data (templates are tracked as *.example.*)
 data/profile/consultant-profile.json
 ollama-mcp/prompts/application_prompt.md

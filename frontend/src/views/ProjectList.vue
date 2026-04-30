@@ -9,6 +9,14 @@
         </p>
       </div>
       <div class="flex gap-2">
+        <input
+          v-model="filters.q"
+          type="text"
+          placeholder="Search title, id, slug, company, industry"
+          @keydown.enter.prevent="applyFilters"
+          @change="applyFilters"
+          class="text-sm border rounded px-2 py-1 w-72"
+        />
         <select
           v-model="filters.sort"
           @change="applyFilters"
@@ -98,6 +106,7 @@
         v-for="p in store.projects"
         :key="p.id"
         :to="`/project/${p.id}`"
+        @click.capture="preventCardNavigationForInteractive($event)"
         :class="[
           'block border rounded-lg p-4 transition-colors',
           isAlerted(p.id)
@@ -248,13 +257,32 @@
             >
               Application
             </span>
-            <span
-              v-if="p.application_outcome_status"
-              class="text-xs px-2 py-0.5 rounded capitalize"
-              :class="outcomeBadgeClass(p.application_outcome_status)"
-            >
-              {{ p.application_outcome_status }}
-            </span>
+            <div class="relative inline-flex items-center">
+              <select
+                :value="p.application_outcome_status || ''"
+                data-stop-card-nav="true"
+                class="appearance-none text-xs border rounded capitalize pl-2 pr-6 py-0.5 max-w-36"
+                :class="outcomeSelectClass(p.application_outcome_status)"
+                :disabled="isUpdatingOutcome(p.id) || deletingIds.includes(p.id) || bulkDeleting"
+                title="Set application outcome (notes can be added in project details)"
+                @click.stop
+                @mousedown.stop
+                @pointerdown.stop
+                @keydown.stop
+                @change.stop="setOutcomeFromList(p.id, ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">Set outcome…</option>
+                <option v-for="s in outcomeStatuses" :key="s" :value="s">
+                  {{ s }}
+                </option>
+              </select>
+              <span
+                class="pointer-events-none absolute right-1 text-[10px]"
+                :class="p.application_outcome_status ? 'text-current' : 'text-gray-500'"
+                aria-hidden="true"
+                >▼</span
+              >
+            </div>
             <MatchingBadge :rate="p.matching_rate" />
           </div>
         </div>
@@ -288,6 +316,7 @@ const router = useRouter();
 const PROJECT_LIST_FILTERS_STORAGE_KEY = 'projectListFilters';
 
 const filters = reactive({
+  q: '',
   sort: 'date',
   is_endcustomer: '',
   has_application: '',
@@ -296,10 +325,22 @@ const filters = reactive({
 const selectedIds = ref<number[]>([]);
 const deletingIds = ref<number[]>([]);
 const bulkDeleting = ref(false);
+const updatingOutcomeIds = ref<number[]>([]);
 const refreshTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const fallbackInterval = ref<ReturnType<typeof setInterval> | null>(null);
 const isMounted = ref(false);
 const refreshQueued = ref(false);
+const outcomeStatuses = [
+  'draft',
+  'sent',
+  'shortlisted',
+  'rejected',
+  'interview',
+  'offer',
+  'won',
+  'lost',
+  'withdrawn',
+] as const;
 
 const allSelected = computed(
   () =>
@@ -350,6 +391,22 @@ function isAlerted(id: number) {
   return alertedProjectIds.value.includes(id);
 }
 
+function isUpdatingOutcome(id: number) {
+  return updatingOutcomeIds.value.includes(id);
+}
+
+function preventCardNavigationForInteractive(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  const current = event.currentTarget as HTMLElement | null;
+  if (!target) return;
+  const interactive = target.closest(
+    'button,select,option,input,textarea,[data-stop-card-nav="true"]',
+  );
+  if (interactive && current && interactive !== current) {
+    event.preventDefault();
+  }
+}
+
 function toggleSelection(id: number) {
   if (!selectedIds.value.includes(id)) {
     if (!selectedIds.value.includes(id)) selectedIds.value.push(id);
@@ -383,6 +440,19 @@ function outcomeBadgeClass(status: string) {
   }
 }
 
+function outcomeSelectClass(status: string | null) {
+  if (!status) return 'bg-white text-gray-600 border-gray-300';
+  const badgeClass = outcomeBadgeClass(status);
+  if (badgeClass.includes('blue')) return 'bg-blue-50 text-blue-700 border-blue-200';
+  if (badgeClass.includes('purple'))
+    return 'bg-purple-50 text-purple-700 border-purple-200';
+  if (badgeClass.includes('emerald'))
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (badgeClass.includes('red')) return 'bg-red-50 text-red-700 border-red-200';
+  if (badgeClass.includes('gray')) return 'bg-gray-100 text-gray-700 border-gray-300';
+  return 'bg-amber-50 text-amber-700 border-amber-200';
+}
+
 async function deleteOne(projectId: number) {
   const ok = window.confirm(
     'Delete this project from the dashboard? It will be hidden and not imported again.',
@@ -414,6 +484,27 @@ async function deleteSelected() {
   }
 }
 
+async function setOutcomeFromList(projectId: number, status: string) {
+  if (!status) return;
+  const project = store.projects.find((row) => row.id === projectId);
+  if (!project) return;
+  if (project.application_outcome_status === status) return;
+  if (isUpdatingOutcome(projectId)) return;
+
+  updatingOutcomeIds.value.push(projectId);
+  try {
+    const result = await store.addOutcome(projectId, status);
+    if (result?.error) return;
+    store.patchProject(projectId, {
+      application_outcome_status: status,
+    });
+  } finally {
+    updatingOutcomeIds.value = updatingOutcomeIds.value.filter(
+      (id) => id !== projectId,
+    );
+  }
+}
+
 function loadStoredFilters() {
   try {
     const raw = sessionStorage.getItem(PROJECT_LIST_FILTERS_STORAGE_KEY);
@@ -421,6 +512,9 @@ function loadStoredFilters() {
     const parsed = JSON.parse(raw) as Partial<typeof filters>;
     if (parsed.sort === 'date' || parsed.sort === 'rate') {
       filters.sort = parsed.sort;
+    }
+    if (typeof parsed.q === 'string') {
+      filters.q = parsed.q;
     }
     if (typeof parsed.is_endcustomer === 'string') {
       filters.is_endcustomer = parsed.is_endcustomer;
@@ -453,6 +547,7 @@ function load() {
 
 function buildParamsFromFilters(): Record<string, string> {
   const params: Record<string, string> = {};
+  if (filters.q.trim()) params.q = filters.q.trim();
   if (filters.sort === 'rate') {
     params.sort = 'rate';
     params.order = 'DESC';
@@ -465,6 +560,7 @@ function buildParamsFromFilters(): Record<string, string> {
 
 function filtersFromRouteQuery() {
   const q = route.query;
+  const textSearch = typeof q.q === 'string' ? q.q : '';
   const sort = q.sort === 'rate' ? 'rate' : 'date';
   const is_endcustomer =
     q.is_endcustomer === 'true' || q.is_endcustomer === 'false'
@@ -476,11 +572,18 @@ function filtersFromRouteQuery() {
       : '';
   const min_rate = typeof q.min_rate === 'string' ? q.min_rate : '';
 
-  return { sort, is_endcustomer, has_application, min_rate };
+  return {
+    q: textSearch,
+    sort,
+    is_endcustomer,
+    has_application,
+    min_rate,
+  };
 }
 
 function applyRouteQueryToFilters() {
   const next = filtersFromRouteQuery();
+  filters.q = next.q;
   filters.sort = next.sort;
   filters.is_endcustomer = next.is_endcustomer;
   filters.has_application = next.has_application;

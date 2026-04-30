@@ -15,7 +15,7 @@ import {
 import { createReadStream, existsSync, realpathSync } from 'fs';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import {
   Project,
   MatchingResult,
@@ -32,6 +32,7 @@ import { DashboardGateway } from './dashboard.gateway';
 @Controller('api')
 export class DashboardController {
   private static readonly HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  private static readonly LONGTEXT_MAX = 4_294_967_295;
   constructor(
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
@@ -63,6 +64,7 @@ export class DashboardController {
     @Query('is_endcustomer') isEndcustomer?: string,
     @Query('min_rate') minRate?: string,
     @Query('has_application') hasApplication?: string,
+    @Query('q') q?: string,
   ) {
     const qb = this.projectRepo
       .createQueryBuilder('p')
@@ -87,6 +89,26 @@ export class DashboardController {
       qb.andWhere('app.id IS NOT NULL');
     } else if (hasApplication === 'false') {
       qb.andWhere('app.id IS NULL');
+    }
+
+    const query = (q ?? '').trim();
+    if (query) {
+      const like = `%${query}%`;
+      const asNumber = Number.parseInt(query, 10);
+      qb.andWhere(
+        new Brackets((where) => {
+          where
+            .where('p.title LIKE :like', { like })
+            .orWhere('p.slug LIKE :like', { like })
+            .orWhere('p.company LIKE :like', { like })
+            .orWhere('p.industry LIKE :like', { like });
+          if (Number.isFinite(asNumber)) {
+            where.orWhere('p.external_id = :externalId', {
+              externalId: asNumber,
+            });
+          }
+        }),
+      );
     }
 
     if (sort === 'rate') {
@@ -269,8 +291,6 @@ export class DashboardController {
         this.appRepo.create({
           project_id: project.id,
           matching_result_id: latestMatch.id,
-          motivation_paragraph: null,
-          application_body: null,
           full_application_text: null,
           application_channel: project.application_channel,
           application_instructions: project.application_instructions,
@@ -409,7 +429,10 @@ export class DashboardController {
   }
 
   @Post('projects/:id/application')
-  async createOrReplaceApplication(@Param('id', ParseIntPipe) id: number) {
+  async createOrReplaceApplication(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body?: { force?: boolean },
+  ) {
     const project = await this.projectRepo.findOne({
       where: { id },
       relations: ['application', 'application.outcomes', 'matching_results'],
@@ -422,6 +445,14 @@ export class DashboardController {
     };
 
     const hadApplication = !!project.application;
+    const force = !!body?.force;
+    if (hadApplication && !force) {
+      return {
+        error: 'Application already exists',
+        requires_confirmation: true,
+        had_application: true,
+      };
+    }
 
     try {
       let matchingResult = this.getLatestMatchingResult(project);
@@ -478,6 +509,59 @@ export class DashboardController {
     }
   }
 
+  @Put('projects/:id/application/manual')
+  async saveManualApplication(
+    @Param('id', ParseIntPipe) id: number,
+    @Body()
+    body: {
+      full_application_text?: string | null;
+    },
+  ) {
+    const project = await this.projectRepo.findOne({
+      where: { id, is_deleted: false },
+      relations: ['matching_results', 'application'],
+    });
+    if (!project) return { error: 'Project not found' };
+
+    const fullText = this.normalizeOptionalText(body.full_application_text);
+    this.assertMaxLen(
+      'full_application_text',
+      fullText,
+      DashboardController.LONGTEXT_MAX,
+    );
+
+    let app = await this.appRepo.findOneBy({ project_id: project.id });
+    if (!app) {
+      const latestMatch = this.getLatestMatchingResult(project);
+      if (!latestMatch) {
+        return { error: 'No matching result found for this project' };
+      }
+      app = this.appRepo.create({
+        project_id: project.id,
+        matching_result_id: latestMatch.id,
+        full_application_text: fullText,
+        application_channel: project.application_channel,
+        application_instructions: project.application_instructions,
+        detected_language: project.detected_language,
+      });
+    } else {
+      app.full_application_text = fullText;
+      app.application_channel = project.application_channel;
+      app.application_instructions = project.application_instructions;
+      app.detected_language = project.detected_language;
+    }
+
+    const saved = await this.appRepo.save(app);
+    this.dashboardGateway.sendProjectUpdate({
+      project_id: project.id,
+      has_application: this.hasGeneratedApplication({
+        ...project,
+        application: saved,
+      } as Project),
+    });
+    return { ok: true, application_id: saved.id };
+  }
+
   private getLatestMatchingResult(project: Project): MatchingResult | null {
     if (!project.matching_results?.length) return null;
     return [...project.matching_results].sort(
@@ -498,11 +582,20 @@ export class DashboardController {
   private hasGeneratedApplication(project: Project): boolean {
     const app = project.application;
     if (!app) return false;
-    return !!(
-      (app.full_application_text && app.full_application_text.trim()) ||
-      (app.application_body && app.application_body.trim()) ||
-      (app.motivation_paragraph && app.motivation_paragraph.trim())
-    );
+    return !!(app.full_application_text && app.full_application_text.trim());
+  }
+
+  private normalizeOptionalText(value?: string | null): string | null {
+    if (value === undefined || value === null) return null;
+    const s = String(value);
+    return s.length === 0 ? null : s;
+  }
+
+  private assertMaxLen(field: string, value: string | null, maxLen: number): void {
+    if (!value) return;
+    if (value.length > maxLen) {
+      throw new BadRequestException(`${field} exceeds max length of ${maxLen}`);
+    }
   }
 
   private async getSettingNumber(

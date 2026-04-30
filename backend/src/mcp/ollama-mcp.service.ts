@@ -21,8 +21,6 @@ export interface ClassificationResult {
 }
 
 export interface ApplicationText {
-  motivation_paragraph: string | null;
-  application_body: string;
   full_application_text: string;
 }
 

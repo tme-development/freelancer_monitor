@@ -104,12 +104,10 @@ APPLICATION BODY:
 
 Output ONLY valid JSON:
 {
-  "motivation_paragraph": "..." or null,
-  "application_body": "...",
   "full_application_text": "..."
 }
 
-The "full_application_text" is the complete text ready to send (motivation + body combined, properly formatted).`;
+The "full_application_text" is the complete text ready to send (properly formatted).`;
 
 /**
  * Technical JSON contract appended after application_prompt.md content.
@@ -125,18 +123,14 @@ CRITICAL RULES (always):
 3. Prefer the project language (see "language" in the user message): German for de, English for en.
 
 Recipient (maps to is_endcustomer in the user message):
-- is_endcustomer = true → "Direkter Kunde": include a motivation block per the style guide (max ~100 words) ONLY in "motivation_paragraph".
-- is_endcustomer = false → "Projektvermittler": set "motivation_paragraph" to null (no separate motivation); use list-focused content only.
+- is_endcustomer = true → "Direkter Kunde": include a concise motivation section in the complete text per style guide.
+- is_endcustomer = false → "Projektvermittler": no separate motivation section; use list-focused content.
 
 JSON fields:
-- "motivation_paragraph": string or null — motivation only for end customer; null for broker.
-- "application_body": string — full application text EXCLUDING the motivation paragraph when customer (Betreff, Anrede, ✅/❎ requirement list, Gruß, Kontakt, then "Nicht abgedeckt" and "Tipps" per the guide). For broker, include the entire letter here.
-- "full_application_text": string — complete text ready to send: for customer, motivation + body; for broker, same as application_body.
+- "full_application_text": string — complete text ready to send, including all relevant sections based on recipient type.
 
 Output ONLY this JSON object shape:
 {
-  "motivation_paragraph": "..." | null,
-  "application_body": "...",
   "full_application_text": "..."
 }`;
 
