@@ -455,7 +455,7 @@ function outcomeSelectClass(status: string | null) {
 
 async function deleteOne(projectId: number) {
   const ok = window.confirm(
-    'Delete this project from the dashboard? It will be hidden and not imported again.',
+    'Delete this project from the dashboard? It will be moved to the trash and can be restored from there.',
   );
   if (!ok) return;
   deletingIds.value.push(projectId);
@@ -471,7 +471,7 @@ async function deleteOne(projectId: number) {
 async function deleteSelected() {
   if (selectedIds.value.length === 0) return;
   const ok = window.confirm(
-    `Delete ${selectedIds.value.length} selected project(s)? They will be hidden and not imported again.`,
+    `Delete ${selectedIds.value.length} selected project(s)? They will be moved to the trash and can be restored from there.`,
   );
   if (!ok) return;
   bulkDeleting.value = true;

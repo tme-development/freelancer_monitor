@@ -57,6 +57,26 @@ export class DashboardController {
     return this.backendActivity.getSnapshot();
   }
 
+  @Get('projects/trash')
+  async getTrashedProjects(
+    @Query('sort') sort?: string,
+    @Query('order') order?: 'ASC' | 'DESC',
+    @Query('is_endcustomer') isEndcustomer?: string,
+    @Query('min_rate') minRate?: string,
+    @Query('has_application') hasApplication?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.queryProjects({
+      isDeleted: true,
+      sort,
+      order,
+      isEndcustomer,
+      minRate,
+      hasApplication,
+      q,
+    });
+  }
+
   @Get('projects')
   async getProjects(
     @Query('sort') sort?: string,
@@ -66,12 +86,34 @@ export class DashboardController {
     @Query('has_application') hasApplication?: string,
     @Query('q') q?: string,
   ) {
+    return this.queryProjects({
+      isDeleted: false,
+      sort,
+      order,
+      isEndcustomer,
+      minRate,
+      hasApplication,
+      q,
+    });
+  }
+
+  private async queryProjects(opts: {
+    isDeleted: boolean;
+    sort?: string;
+    order?: 'ASC' | 'DESC';
+    isEndcustomer?: string;
+    minRate?: string;
+    hasApplication?: string;
+    q?: string;
+  }) {
+    const { isDeleted, sort, order, isEndcustomer, minRate, hasApplication, q } =
+      opts;
     const qb = this.projectRepo
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.matching_results', 'mr')
       .leftJoinAndSelect('p.application', 'app')
       .leftJoinAndSelect('app.outcomes', 'outcome');
-    qb.where('p.is_deleted = :isDeleted', { isDeleted: false });
+    qb.where('p.is_deleted = :isDeleted', { isDeleted });
 
     if (isEndcustomer !== undefined) {
       qb.andWhere('p.is_endcustomer = :isEnd', {
@@ -156,6 +198,8 @@ export class DashboardController {
           external_created: p.external_created,
           scraped_at: p.scraped_at,
           created_at: p.created_at,
+          is_deleted: p.is_deleted,
+          deleted_at: p.deleted_at,
         };
       })(),
     }));
@@ -164,7 +208,7 @@ export class DashboardController {
   @Get('projects/:id')
   async getProject(@Param('id', ParseIntPipe) id: number) {
     const project = await this.projectRepo.findOne({
-      where: { id, is_deleted: false },
+      where: { id },
       relations: [
         'requirements',
         'matching_results',
@@ -201,6 +245,52 @@ export class DashboardController {
     await this.projectRepo.save(project);
 
     return { ok: true, project_id: id };
+  }
+
+  @Post('projects/:id/restore')
+  async restoreProject(@Param('id', ParseIntPipe) id: number) {
+    const project = await this.projectRepo.findOneBy({ id });
+    if (!project) return { error: 'Project not found' };
+    if (!project.is_deleted) {
+      return { ok: true, project_id: id, already_restored: true };
+    }
+
+    project.is_deleted = false;
+    project.deleted_at = null;
+    await this.projectRepo.save(project);
+
+    this.dashboardGateway.sendProjectUpdate({
+      project_id: id,
+      restored: true,
+    });
+
+    return { ok: true, project_id: id };
+  }
+
+  /**
+   * Permanently removes a logically deleted project and all related rows
+   * (requirements, matching results, requirement matches, application,
+   * outcomes). Only allowed when the project is already in the trash.
+   */
+  @Post('projects/:id/purge')
+  async purgeProject(@Param('id', ParseIntPipe) id: number) {
+    const project = await this.projectRepo.findOneBy({ id });
+    if (!project) return { error: 'Project not found' };
+    if (!project.is_deleted) {
+      return {
+        error:
+          'Project must be in the trash before it can be permanently deleted',
+      };
+    }
+
+    await this.projectRepo.delete({ id });
+
+    this.dashboardGateway.sendProjectUpdate({
+      project_id: id,
+      purged: true,
+    });
+
+    return { ok: true, project_id: id, purged: true };
   }
 
   @Get('settings')
@@ -274,6 +364,11 @@ export class DashboardController {
     @Param('id', ParseIntPipe) projectId: number,
     @Body() body: { status: string; notes?: string },
   ) {
+    const projectRow = await this.projectRepo.findOneBy({ id: projectId });
+    if (!projectRow) return { error: 'Project not found' };
+    const trashError = this.assertNotTrashed(projectRow);
+    if (trashError) return trashError;
+
     let app = await this.appRepo.findOneBy({ project_id: projectId });
     if (!app) {
       const project = await this.projectRepo.findOne({
@@ -319,6 +414,11 @@ export class DashboardController {
     @Param('projectId', ParseIntPipe) projectId: number,
     @Param('outcomeId', ParseIntPipe) outcomeId: number,
   ) {
+    const projectRow = await this.projectRepo.findOneBy({ id: projectId });
+    if (!projectRow) return { error: 'Project not found' };
+    const trashError = this.assertNotTrashed(projectRow);
+    if (trashError) return trashError;
+
     const outcome = await this.outcomeRepo.findOne({
       where: { id: outcomeId },
       relations: ['application'],
@@ -367,6 +467,8 @@ export class DashboardController {
       relations: ['application', 'application.outcomes', 'matching_results'],
     });
     if (!project) return { error: 'Project not found' };
+    const trashError = this.assertNotTrashed(project);
+    if (trashError) return trashError;
 
     const thresholdApp = await this.getSettingNumber(
       'matching_threshold_application',
@@ -438,6 +540,8 @@ export class DashboardController {
       relations: ['application', 'application.outcomes', 'matching_results'],
     });
     if (!project) return { error: 'Project not found' };
+    const trashError = this.assertNotTrashed(project);
+    if (trashError) return trashError;
 
     const shortTitle = (t: string, max = 80) => {
       const s = (t || '').trim();
@@ -521,7 +625,17 @@ export class DashboardController {
       where: { id, is_deleted: false },
       relations: ['matching_results', 'application'],
     });
-    if (!project) return { error: 'Project not found' };
+    if (!project) {
+      // Surface a more useful error if the project is in the trash.
+      const trashed = await this.projectRepo.findOneBy({ id });
+      if (trashed?.is_deleted) {
+        return {
+          error:
+            'Project is in the trash and cannot be modified. Restore it first.',
+        };
+      }
+      return { error: 'Project not found' };
+    }
 
     const fullText = this.normalizeOptionalText(body.full_application_text);
     this.assertMaxLen(
@@ -560,6 +674,21 @@ export class DashboardController {
       } as Project),
     });
     return { ok: true, application_id: saved.id };
+  }
+
+  /**
+   * Returns an error response object if the project is logically deleted
+   * (in the trash). Trashed projects are read-only and cannot be modified
+   * in any way until they are restored.
+   */
+  private assertNotTrashed(project: Project): { error: string } | null {
+    if (project?.is_deleted) {
+      return {
+        error:
+          'Project is in the trash and cannot be modified. Restore it first.',
+      };
+    }
+    return null;
   }
 
   private getLatestMatchingResult(project: Project): MatchingResult | null {

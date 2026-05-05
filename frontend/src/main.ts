@@ -6,12 +6,14 @@ import './assets/main.css';
 
 import ProjectList from './views/ProjectList.vue';
 import ProjectDetail from './views/ProjectDetail.vue';
+import TrashList from './views/TrashList.vue';
 import Settings from './views/Settings.vue';
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: ProjectList },
+    { path: '/trash', component: TrashList },
     { path: '/project/:id', component: ProjectDetail, props: true },
     { path: '/settings', component: Settings },
   ],

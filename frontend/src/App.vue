@@ -13,6 +13,12 @@
             Projects
           </router-link>
           <router-link
+            to="/trash"
+            class="text-sm text-gray-600 hover:text-gray-900"
+          >
+            Trash
+          </router-link>
+          <router-link
             to="/settings"
             class="text-sm text-gray-600 hover:text-gray-900"
           >

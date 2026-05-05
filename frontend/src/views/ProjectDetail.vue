@@ -1,9 +1,21 @@
 <template>
   <div v-if="!project" class="text-center py-8 text-gray-400">Loading...</div>
   <div v-else class="space-y-6">
-    <router-link to="/" class="text-sm text-blue-600 hover:underline">
-      &larr; Back to list
+    <router-link
+      :to="isTrashed ? '/trash' : '/'"
+      class="text-sm text-blue-600 hover:underline"
+    >
+      &larr; Back to {{ isTrashed ? 'trash' : 'list' }}
     </router-link>
+
+    <!-- Trash banner -->
+    <div
+      v-if="isTrashed"
+      class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 text-sm"
+    >
+      This project is in the trash and is read-only. No changes to the
+      application or outcomes are possible until it is restored.
+    </div>
 
     <!-- Header -->
     <div class="bg-white border rounded-lg p-6">
@@ -22,6 +34,12 @@
           >
             Broker
           </span>
+          <span
+            v-if="isTrashed"
+            class="ml-2 text-xs bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded"
+          >
+            In trash
+          </span>
           <h1 class="text-xl font-bold mt-1">{{ project.title }}</h1>
           <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
             <span>Published: {{ formatProjectPublishDate(project) }}</span>
@@ -37,50 +55,107 @@
             :rate="project.matching_results?.[0]?.matching_rate ?? null"
             class="text-lg"
           />
-          <button
-            @click="reanalyzeProject"
-            :disabled="reanalyzing"
-            class="mt-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded disabled:opacity-50"
-          >
-            {{ reanalyzing ? 'Re-analyzing...' : 'Re-analyze project' }}
-          </button>
-          <button
-            @click="createApplication"
-            :disabled="creatingApplication"
-            class="mt-2 ml-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded disabled:opacity-50"
-          >
-            {{
-              creatingApplication
-                ? 'Generating...'
-                : project.application
-                ? 'Re-create application'
-                : 'Create application'
-            }}
-          </button>
-          <button
-            @click="deleteProject"
-            :disabled="deleting"
-            class="mt-2 inline-flex items-center justify-center gap-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1.5 rounded disabled:opacity-50"
-            :aria-label="deleting ? 'Deleting project' : 'Delete project'"
-          >
-            <svg
-              v-if="!deleting"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="w-4 h-4 shrink-0"
-              aria-hidden="true"
+          <template v-if="!isTrashed">
+            <button
+              @click="reanalyzeProject"
+              :disabled="reanalyzing"
+              class="mt-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded disabled:opacity-50"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-              />
-            </svg>
-            <span v-if="deleting">Deleting…</span>
-          </button>
+              {{ reanalyzing ? 'Re-analyzing...' : 'Re-analyze project' }}
+            </button>
+            <button
+              @click="createApplication"
+              :disabled="creatingApplication"
+              class="mt-2 ml-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded disabled:opacity-50"
+            >
+              {{
+                creatingApplication
+                  ? 'Generating...'
+                  : project.application
+                  ? 'Re-create application'
+                  : 'Create application'
+              }}
+            </button>
+            <button
+              @click="deleteProject"
+              :disabled="deleting"
+              class="mt-2 inline-flex items-center justify-center gap-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1.5 rounded disabled:opacity-50"
+              :aria-label="deleting ? 'Deleting project' : 'Delete project'"
+            >
+              <svg
+                v-if="!deleting"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-4 h-4 shrink-0"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                />
+              </svg>
+              <span v-if="deleting">Deleting…</span>
+            </button>
+          </template>
+          <template v-else>
+            <button
+              @click="restoreProject"
+              :disabled="restoring"
+              class="mt-2 inline-flex items-center justify-center gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1.5 rounded disabled:opacity-50"
+              :aria-label="restoring ? 'Restoring project' : 'Restore project'"
+            >
+              <svg
+                v-if="!restoring"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-4 h-4 shrink-0"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+                />
+              </svg>
+              <span>{{ restoring ? 'Restoring…' : 'Restore' }}</span>
+            </button>
+            <button
+              @click="purgeProject"
+              :disabled="purging"
+              class="mt-2 ml-2 inline-flex items-center justify-center gap-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1.5 rounded disabled:opacity-50"
+              title="Delete project permanently (cannot be undone)"
+              :aria-label="
+                purging
+                  ? 'Permanently deleting project'
+                  : 'Permanently delete project'
+              "
+            >
+              <svg
+                v-if="!purging"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="w-4 h-4 shrink-0"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18 18 6M6 6l12 12"
+                />
+              </svg>
+              <span>{{ purging ? 'Deleting…' : 'Delete forever' }}</span>
+            </button>
+          </template>
           <a
             :href="project.project_url"
             target="_blank"
@@ -140,6 +215,12 @@
 
     <!-- Application -->
     <div v-if="activeTab === 'Application'" class="bg-white border rounded-lg p-6 space-y-4">
+      <p
+        v-if="isTrashed"
+        class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1"
+      >
+        Read-only — restore the project to edit the application.
+      </p>
       <p v-if="applicationError" class="text-sm text-red-600">{{ applicationError }}</p>
       <div class="grid gap-3">
         <div>
@@ -148,7 +229,8 @@
             v-model="applicationForm.full_application_text"
             :maxlength="LONGTEXT_MAX"
             rows="10"
-            class="w-full text-sm border rounded px-2 py-1"
+            class="w-full text-sm border rounded px-2 py-1 disabled:bg-gray-50 disabled:text-gray-500"
+            :disabled="isTrashed"
             placeholder="Write full application text..."
           />
         </div>
@@ -157,7 +239,7 @@
         <button
           type="button"
           class="text-sm bg-blue-500 text-white px-3 py-1 rounded disabled:opacity-50"
-          :disabled="savingApplication"
+          :disabled="savingApplication || isTrashed"
           @click="saveApplication"
         >
           {{ savingApplication ? 'Saving...' : 'Save application text' }}
@@ -223,6 +305,12 @@
     <!-- Outcome Tracking -->
     <div v-if="activeTab === 'Outcome'" class="bg-white border rounded-lg p-6">
       <h3 class="text-sm font-semibold mb-3">Application Outcome</h3>
+      <p
+        v-if="isTrashed"
+        class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3"
+      >
+        Read-only — restore the project to add or remove outcomes.
+      </p>
       <p v-if="outcomeError" class="text-sm text-red-600 mb-3">{{ outcomeError }}</p>
       <div v-if="project.application?.outcomes?.length" class="space-y-2 mb-4">
         <div
@@ -236,6 +324,7 @@
               <span class="text-gray-400 ml-2">{{ new Date(o.created_at).toLocaleDateString() }}</span>
             </div>
             <button
+              v-if="!isTrashed"
               type="button"
               class="text-xs bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1 rounded disabled:opacity-50"
               :disabled="deletingOutcomeId === o.id"
@@ -247,7 +336,7 @@
           <p v-if="o.notes" class="text-xs text-gray-500 mt-1">{{ o.notes }}</p>
         </div>
       </div>
-      <div class="flex gap-2">
+      <div v-if="!isTrashed" class="flex gap-2">
         <select v-model="newStatus" class="text-sm border rounded px-2 py-1">
           <option value="">Select status...</option>
           <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
@@ -289,6 +378,8 @@ const reanalyzing = ref(false);
 const creatingApplication = ref(false);
 const savingApplication = ref(false);
 const deleting = ref(false);
+const restoring = ref(false);
+const purging = ref(false);
 const deletingOutcomeId = ref<number | null>(null);
 const outcomeError = ref('');
 const applicationError = ref('');
@@ -312,6 +403,8 @@ const reqMatches = computed(() => {
 const uncovered = computed(() =>
   reqMatches.value.filter((m: any) => m.match_type === 'none'),
 );
+
+const isTrashed = computed(() => !!project.value?.is_deleted);
 
 async function submitOutcome() {
   if (!newStatus.value) return;
@@ -455,7 +548,7 @@ async function saveApplication() {
 async function deleteProject() {
   if (deleting.value) return;
   const ok = window.confirm(
-    'Delete this project from the dashboard? It will be hidden and not imported again.',
+    'Delete this project from the dashboard? It will be moved to the trash and can be restored from there.',
   );
   if (!ok) return;
   deleting.value = true;
@@ -464,6 +557,44 @@ async function deleteProject() {
     await router.push('/');
   } finally {
     deleting.value = false;
+  }
+}
+
+async function restoreProject() {
+  if (restoring.value) return;
+  restoring.value = true;
+  try {
+    const projectId = parseInt(props.id);
+    const result = await store.restoreProject(projectId);
+    if (result?.error) {
+      window.alert(result.error);
+      return;
+    }
+    await router.push('/');
+  } finally {
+    restoring.value = false;
+  }
+}
+
+async function purgeProject() {
+  if (purging.value) return;
+  const ok = window.confirm(
+    'Permanently delete this project? This cannot be undone — all related ' +
+      'matching results, requirements, applications, and outcomes will be ' +
+      'removed from the system.',
+  );
+  if (!ok) return;
+  purging.value = true;
+  try {
+    const projectId = parseInt(props.id);
+    const result = await store.purgeProject(projectId);
+    if (result?.error) {
+      window.alert(result.error);
+      return;
+    }
+    await router.push('/trash');
+  } finally {
+    purging.value = false;
   }
 }
 

@@ -23,6 +23,8 @@ export interface ProjectSummary {
   external_created?: string | null;
   scraped_at?: string | null;
   created_at: string;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
 }
 
 interface QueryListState {
@@ -71,6 +73,10 @@ export const useProjectsStore = defineStore('projects', () => {
     activeQueryKey.value = queryKeyFromParams(params);
   }
 
+  function setActiveTrashQuery(params?: Record<string, string>) {
+    activeQueryKey.value = `trash:${queryKeyFromParams(params)}`;
+  }
+
   function upsertProjects(rows: ProjectSummary[]) {
     const next = { ...projectsById.value };
     for (const row of rows) {
@@ -117,7 +123,20 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   async function fetchProjects(params?: Record<string, string>) {
-    const queryKey = queryKeyFromParams(params);
+    return fetchProjectList('/api/projects', params);
+  }
+
+  async function fetchTrashedProjects(params?: Record<string, string>) {
+    return fetchProjectList('/api/projects/trash', params, 'trash:');
+  }
+
+  async function fetchProjectList(
+    endpoint: string,
+    params?: Record<string, string>,
+    keyPrefix = '',
+  ) {
+    const baseKey = queryKeyFromParams(params);
+    const queryKey = `${keyPrefix}${baseKey}`;
     activeQueryKey.value = queryKey;
 
     const existing = inFlightByQueryKey.get(queryKey);
@@ -129,7 +148,7 @@ export const useProjectsStore = defineStore('projects', () => {
     loadingCounter.value += 1;
     const run = (async () => {
       const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      const res = await fetch(`${API}/api/projects${qs}`);
+      const res = await fetch(`${API}${endpoint}${qs}`);
       const rows = (await res.json()) as ProjectSummary[];
       upsertList(queryKey, rows);
       return rows;
@@ -214,6 +233,28 @@ export const useProjectsStore = defineStore('projects', () => {
     return result;
   }
 
+  async function restoreProject(projectId: number) {
+    const res = await fetch(`${API}/api/projects/${projectId}/restore`, {
+      method: 'POST',
+    });
+    const result = await res.json();
+    if (result?.ok) {
+      removeProject(projectId);
+    }
+    return result;
+  }
+
+  async function purgeProject(projectId: number) {
+    const res = await fetch(`${API}/api/projects/${projectId}/purge`, {
+      method: 'POST',
+    });
+    const result = await res.json();
+    if (result?.ok) {
+      removeProject(projectId);
+    }
+    return result;
+  }
+
   function applyProjectUpdate(update: ProjectUpdatePayload) {
     const projectId = Number(update.project_id);
     if (!Number.isFinite(projectId) || projectId <= 0) return;
@@ -264,7 +305,9 @@ export const useProjectsStore = defineStore('projects', () => {
     loading,
     lastProjectUpdateAt,
     fetchProjects,
+    fetchTrashedProjects,
     setActiveQuery,
+    setActiveTrashQuery,
     fetchProject,
     addOutcome,
     deleteOutcome,
@@ -272,6 +315,8 @@ export const useProjectsStore = defineStore('projects', () => {
     createApplication,
     saveManualApplication,
     deleteProject,
+    restoreProject,
+    purgeProject,
     upsertProjects,
     patchProject,
     removeProject,
