@@ -1,9 +1,9 @@
 <template>
   <div
-    class="border-b border-gray-200 bg-slate-50/90 backdrop-blur-sm px-4 py-2 text-sm"
+    class="border-b border-gray-200 bg-slate-50/90 backdrop-blur-sm px-4 py-2 text-sm dark:border-[#3c3c3c] dark:bg-[#2d2d30]/90"
   >
     <div class="max-w-7xl mx-auto flex flex-wrap items-center gap-3">
-      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-[#9da0a6]">
         Backend
       </span>
 
@@ -27,12 +27,12 @@
       <div class="min-h-[1.25rem] flex items-center">
         <p
           v-if="activity.detail && activity.phase !== 'idle'"
-          class="text-xs text-gray-600 truncate max-w-[min(28rem,50vw)]"
+          class="text-xs text-gray-600 truncate max-w-[min(28rem,50vw)] dark:text-[#b6b8bd]"
           :title="activity.detail || undefined"
         >
           {{ activity.detail }}
         </p>
-        <p v-else-if="activity.phase === 'idle'" class="text-xs text-gray-400 italic">
+        <p v-else-if="activity.phase === 'idle'" class="text-xs text-gray-400 italic dark:text-[#808080]">
           Idle
         </p>
       </div>
@@ -40,42 +40,42 @@
       <div class="ml-auto relative">
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-[#3c3c3c] dark:bg-[#252526] dark:text-[#d4d4d4] dark:hover:bg-[#2d2d30]"
           @click="errorsOpen = !errorsOpen"
         >
           Errors
           <span
-            class="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-700 tabular-nums"
+            class="rounded-full bg-gray-200 px-1.5 py-0 text-[10px] font-semibold text-gray-700 tabular-nums dark:bg-[#3c3c3c] dark:text-[#d4d4d4]"
           >
             {{ activity.errors.length }}
           </span>
-          <span class="text-gray-400" aria-hidden="true">{{
+          <span class="text-gray-400 dark:text-[#808080]" aria-hidden="true">{{
             errorsOpen ? '▲' : '▼'
           }}</span>
         </button>
 
         <div
           v-if="errorsOpen"
-          class="absolute right-0 z-40 mt-1 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white shadow-lg"
+          class="absolute right-0 z-40 mt-1 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white shadow-lg dark:border-[#3c3c3c] dark:bg-[#252526]"
         >
           <div
-            class="max-h-48 overflow-y-auto p-2 text-xs text-left divide-y divide-gray-100"
+            class="max-h-48 overflow-y-auto p-2 text-xs text-left divide-y divide-gray-100 dark:divide-[#3c3c3c]"
           >
             <p
               v-if="activity.errors.length === 0"
-              class="py-3 px-2 text-gray-400 text-center"
+              class="py-3 px-2 text-gray-400 text-center dark:text-[#808080]"
             >
               No recent errors
             </p>
             <div
               v-for="(e, i) in activity.errors"
               :key="i"
-              class="py-2 px-2 hover:bg-gray-50"
+              class="py-2 px-2 hover:bg-gray-50 dark:hover:bg-[#2d2d30]"
             >
-              <div class="text-[10px] text-gray-400 font-mono tabular-nums">
+              <div class="text-[10px] text-gray-400 font-mono tabular-nums dark:text-[#808080]">
                 {{ formatErrorTime(e.at) }}
               </div>
-              <div class="text-red-800 break-words mt-0.5">{{ e.message }}</div>
+              <div class="text-red-800 break-words mt-0.5 dark:text-red-300">{{ e.message }}</div>
             </div>
           </div>
         </div>
@@ -107,9 +107,9 @@ const steps: { phase: BackendActivityPhase; label: string }[] = [
 function pillClass(phase: BackendActivityPhase) {
   const active = activity.value.phase === phase;
   if (active) {
-    return 'border-blue-400 bg-blue-50 text-blue-800';
+    return 'border-blue-400 bg-blue-50 text-blue-800 dark:border-blue-500/60 dark:bg-blue-500/15 dark:text-blue-200';
   }
-  return 'border-transparent bg-white/60 text-gray-500';
+  return 'border-transparent bg-white/60 text-gray-500 dark:bg-[#252526]/70 dark:text-[#9da0a6]';
 }
 
 function formatErrorTime(iso: string) {

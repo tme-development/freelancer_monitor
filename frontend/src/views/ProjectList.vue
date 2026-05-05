@@ -221,7 +221,7 @@
             </span>
             <button
               type="button"
-              class="inline-flex items-center justify-center text-xs bg-red-50 hover:bg-red-100 text-red-700 p-1.5 rounded disabled:opacity-50 min-w-[2rem] min-h-[2rem]"
+              class="inline-flex items-center justify-center text-xs bg-red-50 hover:bg-red-100 text-red-700 p-1.5 rounded disabled:opacity-50 min-w-[2rem] min-h-[2rem] dark:bg-red-500/20 dark:hover:bg-red-500/30 dark:text-red-200"
               :disabled="deletingIds.includes(p.id) || bulkDeleting"
               :aria-label="
                 deletingIds.includes(p.id) ? 'Deleting project' : 'Delete project'
@@ -253,7 +253,7 @@
             </button>
             <span
               v-if="p.has_application"
-              class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded"
+              class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded dark:bg-blue-500/20 dark:text-blue-200"
             >
               Application
             </span>
@@ -441,16 +441,19 @@ function outcomeBadgeClass(status: string) {
 }
 
 function outcomeSelectClass(status: string | null) {
-  if (!status) return 'bg-white text-gray-600 border-gray-300';
+  if (!status) return 'bg-white text-gray-600 border-gray-300 dark:bg-[#252526] dark:text-[#9da0a6] dark:border-[#3c3c3c]';
   const badgeClass = outcomeBadgeClass(status);
-  if (badgeClass.includes('blue')) return 'bg-blue-50 text-blue-700 border-blue-200';
+  if (badgeClass.includes('blue'))
+    return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-500/40';
   if (badgeClass.includes('purple'))
-    return 'bg-purple-50 text-purple-700 border-purple-200';
+    return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/20 dark:text-purple-200 dark:border-purple-500/40';
   if (badgeClass.includes('emerald'))
-    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (badgeClass.includes('red')) return 'bg-red-50 text-red-700 border-red-200';
-  if (badgeClass.includes('gray')) return 'bg-gray-100 text-gray-700 border-gray-300';
-  return 'bg-amber-50 text-amber-700 border-amber-200';
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-200 dark:border-emerald-500/40';
+  if (badgeClass.includes('red'))
+    return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-200 dark:border-red-500/40';
+  if (badgeClass.includes('gray'))
+    return 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-[#3c3c3c] dark:text-[#d4d4d4] dark:border-[#4a4a4a]';
+  return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-500/40';
 }
 
 async function deleteOne(projectId: number) {

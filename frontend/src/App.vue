@@ -1,26 +1,26 @@
 <template>
   <div class="min-h-screen">
-    <nav class="bg-white border-b border-gray-200 px-6 py-3">
+    <nav class="bg-white border-b border-gray-200 px-6 py-3 dark:bg-[#252526] dark:border-[#3c3c3c]">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <router-link to="/" class="text-lg font-bold text-gray-800">
+        <router-link to="/" class="text-lg font-bold text-gray-800 dark:text-gray-100">
           Freelancermap Monitor
         </router-link>
         <div class="flex gap-4">
           <router-link
             to="/"
-            class="text-sm text-gray-600 hover:text-gray-900"
+            class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
           >
             Projects
           </router-link>
           <router-link
             to="/trash"
-            class="text-sm text-gray-600 hover:text-gray-900"
+            class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
           >
             Trash
           </router-link>
           <router-link
             to="/settings"
-            class="text-sm text-gray-600 hover:text-gray-900"
+            class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
           >
             Settings
           </router-link>

@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
 import App from './App.vue';
 import './assets/main.css';
+import { initTheme } from './composables/theme';
 
 import ProjectList from './views/ProjectList.vue';
 import ProjectDetail from './views/ProjectDetail.vue';
@@ -22,4 +23,5 @@ const router = createRouter({
 const app = createApp(App);
 app.use(createPinia());
 app.use(router);
+initTheme();
 app.mount('#app');

@@ -1,11 +1,73 @@
 <template>
   <div>
-    <h1 class="text-2xl font-bold mb-6">Settings</h1>
+    <h1 class="text-2xl font-bold mb-6 dark:text-gray-100">Settings</h1>
 
-    <div class="bg-white border rounded-lg p-6 space-y-6">
+    <div class="bg-white border rounded-lg p-6 space-y-6 dark:bg-gray-900 dark:border-gray-800">
+      <!-- Appearance -->
+      <section>
+        <h2 class="text-sm font-semibold text-gray-700 mb-3 dark:text-gray-200">Appearance</h2>
+        <div class="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+          <div>
+            <p class="text-sm font-medium text-gray-800 dark:text-gray-100">Theme</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Switch between light and dark mode.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="isDarkTheme"
+            :title="isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'"
+            class="relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+            :class="isDarkTheme ? 'bg-indigo-600' : 'bg-gray-300'"
+            @click="toggleTheme"
+          >
+            <span class="sr-only">Toggle dark mode</span>
+            <span
+              class="inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-white shadow transition-transform"
+              :class="isDarkTheme ? 'translate-x-7' : 'translate-x-1'"
+            >
+              <!-- Heroicons (MIT/free) -->
+              <svg
+                v-if="isDarkTheme"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.8"
+                stroke="currentColor"
+                class="h-3.5 w-3.5 text-indigo-600"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M21.752 15.002A9.718 9.718 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 1 0 21.752 15.002Z"
+                />
+              </svg>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.8"
+                stroke="currentColor"
+                class="h-3.5 w-3.5 text-amber-500"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 3v1.5m0 15V21m9-9h-1.5M4.5 12H3m15.364 6.364-1.06-1.06M6.696 6.696l-1.06-1.06m12.728 0-1.06 1.06M6.696 17.304l-1.06 1.06M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                />
+              </svg>
+            </span>
+          </button>
+        </div>
+      </section>
+
       <!-- Polling -->
       <section>
-        <h2 class="text-sm font-semibold text-gray-700 mb-3">Polling</h2>
+        <h2 class="text-sm font-semibold text-gray-700 mb-3 dark:text-gray-200">Polling</h2>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs text-gray-500 mb-1">Interval (minutes)</label>
@@ -285,12 +347,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useSettingsStore } from '../stores/settings';
+import { applyTheme, initTheme, useTheme, type ThemeMode } from '../composables/theme';
 
 const API = import.meta.env.VITE_API_URL || '';
 
 const store = useSettingsStore();
+const { themeMode } = useTheme();
 const testSoundState = ref<'idle' | 'playing'>('idle');
 const testSoundError = ref('');
+const isDarkTheme = computed(() => themeMode.value === 'dark');
 
 const scrapingPaused = computed(() => {
   const v =
@@ -319,6 +384,16 @@ const matchingPaused = computed(() => {
 
 function update(key: string, value: string) {
   store.updateSetting(key, value);
+}
+
+async function setTheme(mode: ThemeMode) {
+  applyTheme(mode);
+  await store.updateSetting('theme_mode', mode);
+}
+
+async function toggleTheme() {
+  const next: ThemeMode = themeMode.value === 'dark' ? 'light' : 'dark';
+  await setTheme(next);
 }
 
 async function setScrapingPaused(paused: boolean) {
@@ -419,5 +494,14 @@ function testAlertSound() {
   }
 }
 
-onMounted(() => store.fetchSettings());
+onMounted(async () => {
+  await store.fetchSettings();
+  const fromSettings = store.getSetting('theme_mode');
+  const normalized: ThemeMode | null =
+    fromSettings === 'dark' || fromSettings === 'light' ? fromSettings : null;
+  const effective = initTheme(normalized);
+  if (!normalized) {
+    await store.updateSetting('theme_mode', effective);
+  }
+});
 </script>
